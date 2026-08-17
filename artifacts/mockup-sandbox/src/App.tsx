@@ -1,6 +1,18 @@
 import { useEffect, useState, type ComponentType } from "react";
 
 import { modules as discoveredModules } from "./.generated/mockup-components";
+import { Header } from "./components/thaligai/Header";
+import { Hero } from "./components/thaligai/Hero";
+import { MenuSection } from "./components/thaligai/MenuSection";
+import { ThaligaiBuilder } from "./components/thaligai/ThaligaiBuilder";
+import { ReservationSection } from "./components/thaligai/ReservationSection";
+import { SommelierSection } from "./components/thaligai/SommelierSection";
+import { OrderTracker } from "./components/thaligai/OrderTracker";
+import { StorySection } from "./components/thaligai/StorySection";
+import { CartDrawer, CartItem } from "./components/thaligai/CartDrawer";
+import { Footer } from "./components/thaligai/Footer";
+import { useReducedMotion } from "./hooks/useReducedMotion";
+import { MenuItem } from "./types/thaligai";
 
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 
@@ -91,32 +103,6 @@ function getBasePath(): string {
   return import.meta.env.BASE_URL.replace(/\/$/, "");
 }
 
-function getPreviewExamplePath(): string {
-  const basePath = getBasePath();
-  return `${basePath}/preview/ComponentName`;
-}
-
-function Gallery() {
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
-      <div className="text-center max-w-md">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-3">
-          Component Preview Server
-        </h1>
-        <p className="text-gray-500 mb-4">
-          This server renders individual components for the workspace canvas.
-        </p>
-        <p className="text-sm text-gray-400">
-          Access component previews at{" "}
-          <code className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
-            {getPreviewExamplePath()}
-          </code>
-        </p>
-      </div>
-    </div>
-  );
-}
-
 function getPreviewPath(): string | null {
   const basePath = getBasePath();
   const { pathname } = window.location;
@@ -126,6 +112,89 @@ function getPreviewPath(): string | null {
       : pathname;
   const match = local.match(/^\/preview\/(.+)$/);
   return match ? match[1] : null;
+}
+
+function ContinentalThaligaiExperience() {
+  const [activeTab, setActiveTab] = useState<string>("hero");
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
+  const isReducedMotion = useReducedMotion();
+
+  const handleAddToCart = (item: MenuItem) => {
+    setCartItems((prev) => {
+      const existing = prev.find((ci) => ci.item.id === item.id);
+      if (existing) {
+        return prev.map((ci) =>
+          ci.item.id === item.id ? { ...ci, quantity: ci.quantity + 1 } : ci
+        );
+      }
+      return [...prev, { item, quantity: 1 }];
+    });
+  };
+
+  const handleUpdateQuantity = (itemId: string, delta: number) => {
+    setCartItems((prev) =>
+      prev
+        .map((ci) => {
+          if (ci.item.id === itemId) {
+            const newQty = ci.quantity + delta;
+            return newQty > 0 ? { ...ci, quantity: newQty } : null;
+          }
+          return ci;
+        })
+        .filter(Boolean) as CartItem[]
+    );
+  };
+
+  const handleClearCart = () => {
+    setCartItems([]);
+  };
+
+  const totalCartCount = cartItems.reduce((sum, ci) => sum + ci.quantity, 0);
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950">
+      <Header
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        cartCount={totalCartCount}
+        onOpenCart={() => setIsCartOpen(true)}
+        isReducedMotion={isReducedMotion}
+      />
+
+      <main id="main-content" tabIndex={-1} className="focus:outline-none">
+        {/* Render sections based on navigation or show rich combined landing */}
+        {activeTab === "hero" && (
+          <>
+            <Hero onNavigate={setActiveTab} isReducedMotion={isReducedMotion} />
+            <MenuSection onAddToCart={handleAddToCart} />
+            <ThaligaiBuilder onAddToCart={handleAddToCart} />
+            <ReservationSection />
+            <SommelierSection />
+            <OrderTracker />
+            <StorySection />
+          </>
+        )}
+
+        {activeTab === "menu" && <MenuSection onAddToCart={handleAddToCart} />}
+        {activeTab === "builder" && <ThaligaiBuilder onAddToCart={handleAddToCart} />}
+        {activeTab === "reservation" && <ReservationSection />}
+        {activeTab === "sommelier" && <SommelierSection />}
+        {activeTab === "tracker" && <OrderTracker />}
+        {activeTab === "story" && <StorySection />}
+      </main>
+
+      <CartDrawer
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        cartItems={cartItems}
+        onUpdateQuantity={handleUpdateQuantity}
+        onClearCart={handleClearCart}
+      />
+
+      <Footer />
+    </div>
+  );
 }
 
 function App() {
@@ -140,7 +209,7 @@ function App() {
     );
   }
 
-  return <Gallery />;
+  return <ContinentalThaligaiExperience />;
 }
 
 export default App;
